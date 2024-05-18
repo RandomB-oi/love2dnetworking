@@ -3,6 +3,9 @@ module.__index = module
 
 local ENet = require("enet")
 local NetworkSignalClass = require("NetworkingClient.NetworkSignal")
+local lualzw = require("NetworkingClient.lualzw")
+
+local Transformer = require("NetworkingClient.DataTransformer")
 
 module.new = function(address, port)
     local self = setmetatable({}, module)
@@ -12,6 +15,7 @@ module.new = function(address, port)
     self.IP = address
     self.Port = port
     self.ServerIdentity = tostring(self.IP)..":"..tostring(self.Port)
+    self.DataSeparator = "/-/"
 
     self.Host = ENet.host_create()
     self.Server = self.Host:connect(self.ServerIdentity)
@@ -28,7 +32,16 @@ module.new = function(address, port)
     return self
 end
 
-function module:Send(message)
+function module:Send(jobName, jobData)
+    local data = {n=jobName, d=jobData}
+    local message = Transformer.Save(data)
+    local compressed = "cmp"..lualzw.compress(message)
+
+    self.Host:service(100)
+	self.Server:send(compressed)
+end
+
+function module:SendMessage(message)
     self.Host:service(100)
 	self.Server:send(message)
 end
@@ -41,11 +54,15 @@ function module:Tick()
     local event = self.Host:service(100)
     while event do
         if event.type == "receive" then
-            print("Got message: ", event.data, event.peer)
+            local message = event.data
+            if message:sub(1,3) == "cmp" then
+                message = message:sub(4,-1)
+                message = Transformer.Load(lualzw.decompress(message))
+                self.DataRecived:Fire(message.n, message.d)
+            else
+                self.DataRecived:Fire("unknown", message)
+            end
 
-            self.DataRecived:Fire(event.data)
-
-            event.peer:send( "ping" )
         elseif event.type == "connect" then
             print(event.peer, "connected.")
 

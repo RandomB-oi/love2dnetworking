@@ -21,7 +21,6 @@ function module:Tick()
         
         if event.type == "receive" then
             -- print("Got message: ", event.data, event.peer)
-            event.peer:send( "pong" )
             self.Host:broadcast(event.data)
 
         elseif event.type == "connect" then
@@ -30,14 +29,22 @@ function module:Tick()
 
         elseif event.type == "disconnect" then
             print(event.peer, "disconnected.")
-            self.ConnectedClients[event.peer] = nil
-            
+            self:DisconnectClient(event.peer)
         end
         event = self.Host:service()
     end
 end
 
+function module:DisconnectClient(client)
+    client:reset()
+    self.ConnectedClients[client] = nil
+end
 
+function module:DisconnectAll()
+    for client in pairs(self.ConnectedClients) do
+        self:DisconnectClient(client)
+    end
+end
 
 local lineHeight = 16
 local msgCount = 0

@@ -1,5 +1,8 @@
 {
     "Lua.diagnostics.globals": [
         "love"
+    ],
+    "robloxLsp.diagnostics.globals": [
+        "love"
     ]
 }
